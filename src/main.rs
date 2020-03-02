@@ -2,9 +2,13 @@
 #![no_main]
 
 // pick a panicking behavior
-//extern crate panic_halt; // you can put a breakpoint on `rust_begin_unwind` to catch panics
 // extern crate panic_abort; // requires nightly
 // extern crate panic_itm; // logs messages over ITM; requires ITM support
+
+#[cfg(not(debug_assertions))]
+extern crate panic_halt; // you can put a breakpoint on `rust_begin_unwind` to catch panics
+
+#[cfg(debug_assertions)]
 extern crate panic_semihosting; // logs messages to the host stderr; requires a debugger
 
 #[cfg(debug_assertions)]
@@ -16,7 +20,6 @@ use cortex_m_log::{println};
 use cortex_m_log::{d_println};
 
 
-// use cortex_m::asm;
 use cortex_m_rt::{entry, ExceptionFrame};
 
 #[cfg(feature = "stm32h7x")]
@@ -239,13 +242,14 @@ const SCREEN_HEIGHT: i32 = 64;
 const MAX_BAR_HEIGHT: i32 = (SCREEN_HEIGHT - BAR_VERT_INSET);
 const MAX_BAR_HEIGHT_F64: f64 = MAX_BAR_HEIGHT as f64;
 const MAX_BAR_RADIUS_F64: f64 = MAX_BAR_HEIGHT_F64 / 2.0;
-const BAR_WIDTH: i32 = 3;
+const BAR_WIDTH: i32 = 2;
 const AVG_BAR_HEIGHT: i32 = BAR_VERT_INSET + (MAX_BAR_HEIGHT / 2);
 
 #[entry]
 fn main() -> ! {
 
     let (i2c_port, mut user_led1, mut delay_source) = setup_peripherals();
+    #[cfg(debug_assertions)]
     let mut log = get_debug_log();
     let i2c_bus = shared_bus::CortexMBusManager::new(i2c_port);
 
@@ -272,16 +276,6 @@ fn main() -> ! {
         //if read_count % 2 == 0
         {
             //d_println!(log, "{} {:.2}",read_count, _pres);
-            //d_println!(log, "{} ",read_count);
-
-            //let display_str = lexical::to_string(_pres);
-
-            // disp.draw(
-            //     Font6x8::render_str("97885.59")
-            //         .with_stroke(Some(1u8.into()))
-            //         .translate(Coord::new(0, 16))
-            //         .into_iter(),
-            // );
 
             //clear bar area
             disp.draw( Rect::new(Coord::new(xpos, 0), Coord::new(xpos + BAR_WIDTH, SCREEN_HEIGHT)).with_fill(Some(0u8.into())).into_iter());

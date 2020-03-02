@@ -10,7 +10,7 @@ embedded-hal = "0.2.3"
 cortex-m = "0.6.0"
 cortex-m-rt = "0.6.10"
 cortex-m-semihosting = "0.3.3"
-#panic-halt = "0.2.0"
+panic-halt = "0.2.0"
 panic-semihosting = "0.5.3"
 cortex-m-log = { version = "0.6.1", features = ["log-integration", "itm", "semihosting"] }
 
