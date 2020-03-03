@@ -245,7 +245,6 @@ const SCREEN_WIDTH: i32 = 128;
 const SCREEN_HEIGHT: i32 = 64;
 const MAX_BAR_HEIGHT: i32 = (SCREEN_HEIGHT - BAR_VERT_INSET);
 const MAX_BAR_HEIGHT_F64: f64 = MAX_BAR_HEIGHT as f64;
-const MAX_BAR_RADIUS_F64: f64 = MAX_BAR_HEIGHT_F64 / 2.0;
 const BAR_WIDTH: i32 = 2;
 const AVG_BAR_HEIGHT: i32 = BAR_VERT_INSET + (MAX_BAR_HEIGHT / 2);
 
@@ -273,21 +272,22 @@ fn main() -> ! {
     let mut xpos: i32  = 0;
     let mut format_buf = ArrayString::<[u8; 20]>::new();
 
-    let mut read_count: u32 = 0;
+    let mut read_count: i32 = 0;
     loop {
-        let abs_press = sensor.pressure_one_shot();
+        let abs_press = 10.0 * sensor.pressure_one_shot();
         read_count += 1;
         let avg_press = tracker.update(abs_press);
 
-        //if read_count % 10 == 0
+        if read_count % 5 == 0
         {
             //d_println!(log, "{} {:.2}",read_count, _pres);
 
             //clear bar area
-            disp.draw( Rect::new(Coord::new(xpos, 0), Coord::new(xpos + BAR_WIDTH, SCREEN_HEIGHT)).with_fill(Some(0u8.into())).into_iter());
+            disp.draw( Rect::new(Coord::new(xpos, 0), Coord::new(xpos + (2*BAR_WIDTH), SCREEN_HEIGHT)).with_fill(Some(0u8.into())).into_iter());
 
             //d_println!(log, "{:.2} / {:.2} ", abs_press, avg_press);
-            let pixels_per_press = MAX_BAR_RADIUS_F64 / tracker.range();
+            let pixels_per_press = MAX_BAR_HEIGHT_F64 / tracker.range();
+
             let delta_pixels = pixels_per_press * (avg_press - abs_press);
             let ypos = AVG_BAR_HEIGHT + (delta_pixels as i32);
 
@@ -308,6 +308,7 @@ fn main() -> ! {
 
             xpos = xpos + BAR_WIDTH;
             if xpos > SCREEN_WIDTH { xpos = 0; }
+
         }
         let _ = user_led1.toggle();
         delay_source.delay_ms(1u8);
@@ -316,18 +317,24 @@ fn main() -> ! {
 }
 
 
+/// Implements exponential weighted moving average of sensor readings,
+/// including exponentially fading minimum and maximum
 pub struct SensorValueTracker {
-    minimum: f64,
-    maximum: f64,
+    /// recent minimum value (not global minimum)
+    local_min: f64,
+    /// recent maximum value (not global maximum)
+    local_max: f64,
+    /// exponentially weighted moving average
     average: f64,
+    /// weighting factor-- bigger alpha causes faster fade of old values
     alpha: f64,
 }
 
 impl SensorValueTracker {
     pub fn new(alpha: f64) -> Self {
         Self {
-            minimum: core::f64::NAN,
-            maximum: core::f64::NAN,
+            local_min: core::f64::NAN,
+            local_max: core::f64::NAN,
             average: core::f64::NAN,
             alpha: alpha
         }
@@ -338,28 +345,36 @@ impl SensorValueTracker {
     }
 
     pub fn range(&self) -> f64 {
-        let mut range = self.maximum - self.minimum;
+        let mut range = self.local_max - self.local_min;
         if range == 0.0 {
             range = 1.0;
         }
 
-        return range;
+        if range < 0.0 { -range }
+        else { range }
     }
 
     pub fn update(&mut self, new_value: f64) -> f64 {
         //seed the EMWA with the initial value
-        if self.minimum.is_nan() { self.minimum = new_value; }
-        if self.maximum.is_nan() { self.maximum = new_value; }
+        if self.local_min.is_nan() { self.local_min = new_value; }
+        if self.local_max.is_nan() { self.local_max = new_value; }
         if self.average.is_nan() { self.average = new_value; }
 
-        if new_value > self.maximum { self.maximum = new_value; }
-        if new_value < self.minimum { self.minimum = new_value; }
-
-        self.minimum = (self.alpha * new_value) + (1.0 - self.alpha) * self.minimum;
-        self.maximum = (self.alpha * new_value) + (1.0 - self.alpha) * self.maximum;
         self.average = (self.alpha * new_value) + (1.0 - self.alpha) * self.average;
+
+        // extrema fade toward average
+        if new_value > self.local_max { self.local_max = new_value; }
+        else if new_value > self.average {
+            self.local_max = (self.alpha * new_value) + (1.0 - self.alpha) * self.local_max;
+        }
+        if new_value < self.local_min { self.local_min = new_value; }
+        else if new_value < self.average {
+            self.local_min = (self.alpha * new_value) + (1.0 - self.alpha) * self.local_min;
+        }
+
         self.average
     }
+
 }
 
 
