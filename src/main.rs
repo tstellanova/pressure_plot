@@ -46,6 +46,9 @@ use embedded_graphics::prelude::*;
 use embedded_graphics::primitives::{Rect}; //, Circle, Line};
 // use cortex_m::asm::bkpt;
 
+use core::fmt;
+use arrayvec::ArrayString;
+
 #[macro_use]
 extern crate cortex_m_rt;
 
@@ -236,6 +239,7 @@ fn setup_peripherals() ->  (
     (i2c_port, user_led1, delay_source)
 }
 
+// const LABEL_TEXT_HEIGHT: i32 = 5;
 const BAR_VERT_INSET: i32 = 5;
 const SCREEN_WIDTH: i32 = 128;
 const SCREEN_HEIGHT: i32 = 64;
@@ -267,13 +271,15 @@ fn main() -> ! {
 
     let mut tracker = SensorValueTracker::new(0.1);
     let mut xpos: i32  = 0;
-    //let mut read_count: u32 = 0;
+    let mut format_buf = ArrayString::<[u8; 10]>::new();
+
+    let mut read_count: u32 = 0;
     loop {
         let abs_press = sensor.pressure_one_shot();
-        //read_count += 1;
+        read_count += 1;
         let avg_press = tracker.update(abs_press);
 
-        //if read_count % 2 == 0
+        //if read_count % 10 == 0
         {
             //d_println!(log, "{} {:.2}",read_count, _pres);
 
@@ -288,25 +294,23 @@ fn main() -> ! {
             // draw new bar
             disp.draw( Rect::new(Coord::new(xpos, ypos), Coord::new(xpos + BAR_WIDTH, SCREEN_HEIGHT)).with_fill(Some(1u8.into())).into_iter());
 
-            //disp.draw(Circle::new(Coord::new(64, 32), 32).with_stroke(Some(1u8.into())).into_iter());
-            //disp.draw(Line::new(Coord::new(0, 0), Coord::new(64, 32)).with_stroke(Some(1u8.into())).into_iter());
-            //disp.draw(Line::new(Coord::new(64, 64), Coord::new(80, 80)).with_stroke(Some(1u8)));
-
             //overdraw the label
-            disp.draw(
-                Font6x8::render_str("Pressure")
-                    .with_stroke(Some(1u8.into()))
-                    //.translate(Coord::new(0, SCREEN_HEIGHT - 16))
-                    .into_iter(),
-            );
-            disp.flush().unwrap();
+            format_buf.clear();
+            if fmt::write(&mut format_buf, format_args!("{:.2} Pa", avg_press)).is_ok() {
+                disp.draw(
+                    Font6x8::render_str(format_buf.as_str()) //"Pressure")
+                        .with_stroke(Some(1u8.into()))
+                        //.translate(Coord::new(0, SCREEN_HEIGHT - 16))
+                        .into_iter(),
+                );
+                disp.flush().unwrap();
+            }
 
-            //d_println!(log, "{} {}", xpos, ypos);
-            xpos = xpos + 3;
+            xpos = xpos + BAR_WIDTH;
             if xpos > SCREEN_WIDTH { xpos = 0; }
         }
         let _ = user_led1.toggle();
-        //delay_source.delay_ms(1u8);
+        delay_source.delay_ms(1u8);
     }
 
 }

@@ -17,13 +17,9 @@ cortex-m-log = { version = "0.6.1", features = ["log-integration", "itm", "semih
 shared-bus = {version = "0.1.4", features = ["cortexm"] }
 ssd1306 = "0.2.6"
 embedded-graphics = "0.4.9"
-#lexical-core = {version="^0.7.1", features=[]}
-#lexical-core =  {version="0.7.4", default-features=false  }
-#lazy_static = {version="1.4.0", features=["spin_no_std"]}
-
+arrayvec = {version = "0.5.1", default-features = false}
 
 bmp280-ehal = "0.0.3"
-#bmp280-ehal = { path = "../bmp280-ehal" }
 
 
 # stm32 family specialization:
