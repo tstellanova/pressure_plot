@@ -271,7 +271,7 @@ fn main() -> ! {
 
     let mut tracker = SensorValueTracker::new(0.1);
     let mut xpos: i32  = 0;
-    let mut format_buf = ArrayString::<[u8; 10]>::new();
+    let mut format_buf = ArrayString::<[u8; 20]>::new();
 
     let mut read_count: u32 = 0;
     loop {
@@ -303,8 +303,8 @@ fn main() -> ! {
                         //.translate(Coord::new(0, SCREEN_HEIGHT - 16))
                         .into_iter(),
                 );
-                disp.flush().unwrap();
             }
+            disp.flush().unwrap();
 
             xpos = xpos + BAR_WIDTH;
             if xpos > SCREEN_WIDTH { xpos = 0; }
